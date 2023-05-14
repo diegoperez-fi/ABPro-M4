@@ -1,5 +1,5 @@
 from datetime import datetime
-#Clase Cliente
+
 class Cliente():
     def __init__(self, id, nombre, apellido, fecha_registro, saldo, contacto=None):
         self.id = id
@@ -29,48 +29,68 @@ class Cliente():
         print(f"Tu saldo actual es de: {self.obtener_saldo()}")
 
 
-        
-        
-#------------------------------------------------------------------------------------------------------------------------------------------------------   
 
+#--------------------------------------------------------------
 
-#Clase Pruducto
-class Producto():
-    def __init__(self, sku, nombre, categoria, proveedor, stock, valor_neto, descuento=None):
+class Producto:
+    def __init__(self, sku, nombre, valor_neto):
         self.sku = sku
         self.nombre = nombre
-        self.categoria = categoria
-        self.proveedor = proveedor
-        self.stock = stock
         self.valor_neto = valor_neto
-        self.impuesto = 1.19
-        self.descuento = descuento
-        self.valor_final = self.valor_neto * self.impuesto
-
-
-
-
-#------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-class Validacion(Producto, Cliente):
-    def __init__(self, sku, nombre, categoria, proveedor, stock, valor_neto, valor_final, descuento, id, nombre_cliente, apellido_cliente, fecha_registro, saldo, contacto=None):
-        Producto.__init__(self, sku, nombre, categoria, proveedor, stock, valor_neto, valor_final, descuento)
-        Cliente.__init__(self, id, nombre_cliente, apellido_cliente, fecha_registro, saldo, contacto)
         
-    def validar_saldo(self, cliente, producto):
-        if cliente.obtener_saldo() < producto.valor_final:
-            print("No cuenta con saldo suficiente")
-        elif cliente.obtener_saldo() >= producto.valor_final:
-            pass
-           
-    def validar_stock(self, producto):
-        if producto.stock < 1:
-            print("Lo sentimos no hay stock suficiente")
 
-#-----------------------------------------------------------------------------------------------------------------------------------------------------
-    
-#Clase Vendedor   
-class Vendedor(Validacion):
+#--------------------------------------------------------------
+
+
+class Bodega(Producto):
+    def __init__(self,  sku, nombre, valor_neto, stock_b):
+        super().__init__(sku, nombre, valor_neto)
+        self.stock_b = stock_b
+        self.valor_mayorista = valor_neto - (valor_neto * 0.3)
+
+
+
+#---------------------------------------------------------------
+
+class Sucursal(Producto):
+    def __init__(self,  sku, nombre, valor_neto, stock_s):
+        super().__init__(sku, nombre, valor_neto)
+        self.stock_s = stock_s
+        
+
+    def ajustar_stock(self):
+        if self.stock_s < 50:
+            self.stock_s += 300
+            for producto in productos_bodega:
+                if producto.sku == self.sku:
+                    producto.stock_b -= 300
+                    print(f"El nuevo Stock en bodega del producto {producto.nombre} es de {producto.stock_b} unidades")
+                    print(f"El nuevo Stock en sucursal del producto {producto.nombre} es de {self.stock_s}")
+                    break
+
+#--------------------------------------------------------------------
+class OrdenCompra:
+    def __init__(self, id_ordencompra, producto, despacho):
+        self.id_ordencompra = id_ordencompra
+        self.producto = producto
+        self.despacho = despacho
+        self.valor_despacho = 5000 if despacho else 0
+
+    def calcular_total_final(self):
+        valor_neto = self.producto.valor_neto
+        impuesto = valor_neto * 0.19
+        valor_total = valor_neto + impuesto + self.valor_despacho
+
+        print("Detalle de la orden de compra:")
+        print(f"Valor neto: {valor_neto} CLP")
+        print(f"Impuesto: {impuesto} CLP")
+        print(f"Despacho: {'Sí, costo despacho: 5000' if self.despacho else 'No'}")
+        print(f"Valor total: {valor_total} CLP")
+
+        return valor_total
+
+#-------------------------------------------------------------------  
+class Vendedor:
     def __init__(self, run, nombre, apellido, seccion, contacto = None):
         self.run = run
         self.nombre = nombre
@@ -79,78 +99,73 @@ class Vendedor(Validacion):
         self.__comision = 0
         self.contacto = contacto
 
-    # Metodo para vender, se descuenta 1 del stock del producto, se calcula la comision y se suma al atributo comision del vendedor, 
-    # Y descuenta el valor final del producto (valorneto+impuesto) del saldo del producto, llamando al metodo actualizar_saldo(ya que saldo
-    # esta encapsulado). 
-    def vender(self, producto, cliente):
-        self.validar_stock(producto)
-        self.validar_saldo(cliente, producto)
-        if producto.stock > 0:
-            producto.stock -= 1
-            comision = producto.valor_neto * 0.005
-            self.__comision += comision
-            cliente.actualizar_saldo(-producto.valor_final)
-            print("Estimado cliente su saldo despues de esta compra es: ")
-            cliente.mostrar_saldo()
+   
+    def vender(self, orden_compra, cliente):
+        producto = orden_compra.producto
+
+        if producto.stock_s > 0:
+            valor_total = orden_compra.calcular_total_final()
+
+            if cliente.obtener_saldo() >= int(valor_total):
+                producto.stock_s -= 1
+                comision = producto.valor_neto * 0.005
+                self.__comision += comision
+                cliente.actualizar_saldo(-valor_total)
+
+                print("Venta realizada exitosamente.")
+                print(f"Nuevo saldo del cliente: {cliente.obtener_saldo()} CLP")
+                print(f"Nuevo stock del producto en sucursal: {producto.stock_s} unidades")
+            else:
+                print("El cliente no tiene saldo suficiente para realizar la compra.")
         else:
-            print("Lo sentimos, este producto no se encuentra disponible en este momento")
+            print("El producto no está disponible en stock en la sucursal.")
+
 
     def obtener_comision(self):
         return self.__comision
     
-    
-#-----------------------------------------------------------------------------------------------------------------------------------------------
-
-#Clase Proveedor
-class Proveedor():
-    def __init__(self, rut, nombre_legal, razon_social, pais, tipo_persona, contacto=None):
-        self.rut = rut
-        self.nombre_legal = nombre_legal
-        self.razon_social = razon_social
-        self.pais = pais
-        self.tipo_persona = tipo_persona
-        self.contacto = contacto
 
 
 
-    def enviar_productos(self, producto):
-        if producto.stock == 0:
-            producto.stock + 50
-            print("Se ha actualizado el stock de productos")
-        
+#------------------------------------------------------------------------
 
-
-
-
-#------------------------------------------------------------------------------------------------------------------------
-
+#Clientes
 #instanciamos 5 clientes
-cliente1 = Cliente("c001","Camila", "Fuentes", "25-5-2021", 100)
-cliente2 = Cliente("c002", "Ana", "Pereira", "1-2-2019", 0)
-cliente3 = Cliente("c003", "Diego", "Perez", "2-6-2015", 0)
-cliente4 = Cliente("c004", "Tamara", "Torres", "15-11-2022", 0)
-cliente5 = Cliente("c005", "Alondra", "Mendez", "8-10-2019", 0)
+cliente1 = Cliente("c001","Camila", "Fuentes", "25-5-2021", 20000)
+cliente2 = Cliente("c002", "Ana", "Pereira", "1-2-2019", 15000)
 
 
-#instanciamos 5 proveedores
-proveedor1 = Proveedor('12345678-9', 'Proveedor 1 Ltda.', 'Proveedor 1 Ltda.', 'Chile', 'persona jurídica','juan@proveedor1.cl')
-proveedor2 = Proveedor('98765432-1', 'Proveedor 2 SpA', 'Proveedor 2 SpA', 'Chile', 'persona jurídica','maria@proveedor2.cl')
-proveedor3 = Proveedor('11111111-1', 'Juan Perez', 'Juan Perez', 'Colombia', 'persona natural')
-proveedor4 = Proveedor('22222222-2', 'María Gonzalez', 'María Gonzalez', 'Colombia', 'persona natural')
-proveedor5 = Proveedor('33333333-3', 'Proveedor 5 Inc.', 'Proveedor 5 Inc.', 'Estados Unidos', 'persona jurídica','john@proveedor5.com')
+#Productos Bodega
+zapatillas = Bodega('A111', 'zapatillas', 5000, 500)
+poleras = Bodega('A112', 'polera', 3000, 600)
+zapatos = Bodega('A113', 'zapatos', 15000, 600)
 
+productos_bodega = [zapatillas, zapatos, poleras]
+
+
+#Productos sucursal
+zapatillas_sucursal = Sucursal('A111', 'zapatillas', 5000, 60)
+poleras_sucursal = Sucursal('A112', 'polera', 3000, 51)
+zapatos_sucursal = Sucursal('A113', 'zapatos', 15000, 40)
+
+productos_sucursal = [zapatillas_sucursal, zapatos_sucursal, poleras_sucursal]
 
 #Instanciamos vendedor
 vendedor1 = Vendedor(135695258, "Pedro", "Moreno", "Electronica")
 
-#(self, sku, nombre, categoria, proveedor, stock, valor_neto, descuento=None):
-#Instanciamos producto
-producto1 = Producto("P001", "Refigerador", "Linea Blanca", proveedor1, 1, 50)
+
+#Instancia para verificar el stock de productos en sucursal
+for producto in productos_sucursal:
+    producto.ajustar_stock()
 
 
-#----------------------------------------------------------------------------------------------------------------------------------------------
+#Instancia de orden de compra
+orden_compra = OrdenCompra(1, zapatillas_sucursal, True)
 
 
 
-vendedor1.vender(producto1, cliente1)
-proveedor1.enviar_productos(producto1)
+#Instanciamos la venta desde la clase vendedor
+vendedor1.vender(orden_compra, cliente1)
+
+#Comprobamos que se haga la comision del vendedor por el producto vendido
+print(f"Comisión del vendedor: {vendedor1.obtener_comision()} CLP")
